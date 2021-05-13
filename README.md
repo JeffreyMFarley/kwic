@@ -19,23 +19,29 @@ See [this commit](https://github.com/JeffreyMFarley/kwic/commit/78264556ad39623a
 
 ```
 $ python kwic.py --help                                                 
-usage: kwic [-h] [--top TOP] [--min-occ MIN_OCC] document
+usage: kwic [-h] [--top TOP] [--min-occ MIN_OCC]
+            [--handle-newline {keep,ignore,space}]
+            document
 
 shows key words in context
 
 optional arguments:
-  -h, --help         show this help message and exit
+  -h, --help            show this help message and exit
 
 Analysis:
-  --top TOP          how many high scoring nouns and verbs are keywords
-  --min-occ MIN_OCC  number of key words in an important sentence
+  --top TOP             how many high scoring nouns and verbs are keywords
+  --min-occ MIN_OCC     number of key words in an important sentence
+
+Display:
+  --handle-newline {keep,ignore,space}
+                        decide how newlines should be handled
 
 I/O:
-  document           the file to analyze
+  document              the file to analyze
 ```
 
 ## Example
 
 ```
-$ python kwic.py sample_texts/moby-dick.txt                     
+$ python kwic.py --handle-newline space sample_texts/moby-dick.txt                     
 ```

@@ -128,12 +128,16 @@ def findImportantSentences(doc, keyWords, minimum_occ):
     return important
 
 
-def markupSentencesCli(sents, nouns, verbs):
+def markupSentencesCli(sents, nouns, verbs, options):
     def textNoun(s):
         return u'\u001b[32m{}\u001b[0m'.format(s)
 
     def textVerb(s):
         return u'\u001b[33m{}\u001b[0m'.format(s)
+
+    newline = ''
+    if options.handle_newline == 'space':
+        newline = ' '
 
     for i, sent in sents:
         s = ''
@@ -142,8 +146,8 @@ def markupSentencesCli(sents, nouns, verbs):
                 s += textNoun(tok.text_with_ws)
             elif tok.lemma_.lower() in verbs:
                 s += textVerb(tok.text_with_ws)
-            elif tok.is_space:
-                pass
+            elif tok.is_space and '\n' in tok.text:
+                s += tok.text if options.handle_newline == 'keep' else newline
             else:
                 s += tok.text_with_ws
 
@@ -160,6 +164,10 @@ def build_arg_parser():
           help='how many high scoring nouns and verbs are keywords')
     g.add('--min-occ', type=int, default=3,
           help='number of key words in an important sentence')
+    g = p.add_argument_group('Display')
+    g.add('--handle-newline', default='ignore',
+          choices=['keep', 'ignore', 'space'],
+          help='decide how newlines should be handled')
     g = p.add_argument_group('I/O')
     g.add('document',
           help='the file to analyze')
@@ -201,7 +209,7 @@ def main():
 
     print('\nKey words in context')
     sents = findImportantSentences(doc, keyWords, options.min_occ)
-    markupSentencesCli(sents, nouns, verbs)
+    markupSentencesCli(sents, nouns, verbs, options)
 
     print('\nStats')
     total_sents = len(list(doc.sents))
