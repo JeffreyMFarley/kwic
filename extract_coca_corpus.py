@@ -31,10 +31,10 @@ def buildCocaDicts(filename):
     table['pos'] = table['c1'].apply(fix_word_class)
 
     # Create a pivot of lemma x part of speech
-    reduced = table.groupby(['pos', 'L1'])['tcoca'].max().unstack(0)
+    reduced = table.groupby(['pos', 'L1'])['coca'].sum().unstack(0)
 
     # Create a summed series of lemma (part of speech agnostic)
-    Z = table.groupby('L1')['tcoca'].max()
+    Z = table.groupby('L1')['coca'].sum()
 
     return {
         'total_docs': Z.max(),
@@ -48,7 +48,7 @@ def buildCocaDicts(filename):
 
 
 print('Reading Corpus of Contemporary American English...')
-coca = buildCocaDicts('b240.txt')
+coca = buildCocaDicts('../b240.txt')
 
 print('Writing Results...')
 with io.open('corpus.json', 'w', encoding='utf-8') as f:
