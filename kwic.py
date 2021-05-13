@@ -147,9 +147,9 @@ def markupSentencesCli(sents, nouns, verbs, unknowns, options):
         for tok in sent:
             if tok.text in unknowns:
                 s += textUnk(tok.text) + tok.whitespace_
-            elif tok.lemma_.lower() in nouns:
+            elif tok.pos_ == 'NOUN' and tok.lemma_.lower() in nouns:
                 s += textNoun(tok.text_with_ws)
-            elif tok.lemma_.lower() in verbs:
+            elif tok.pos_ == 'VERB' and tok.lemma_.lower() in verbs:
                 s += textVerb(tok.text_with_ws)
             elif tok.is_space and '\n' in tok.text:
                 s += tok.text if options.handle_newline == 'keep' else newline
