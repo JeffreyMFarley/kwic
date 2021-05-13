@@ -56,10 +56,10 @@ def bagsOfWords(doc, known, ignores):
 
     # Load the SpaCy doc as a data frame (1 token per row)
     attrs = [
-        [T.lemma_, T.pos_, 1]
+        [T.text, T.lemma_, T.pos_, 1]
         for T in removeStopwords(doc, ignores)
     ]
-    df = pd.DataFrame(attrs, columns=['lemma', 'pos', 'count'])
+    df = pd.DataFrame(attrs, columns=['word', 'lemma', 'pos', 'count'])
 
     # Make sure the lemma column is lowercase (spaCy) makes proper nouns Uppercase
     df["lemma"] = df["lemma"].str.lower()
@@ -82,7 +82,7 @@ def bagsOfWords(doc, known, ignores):
         'all_lemmas': df_known.groupby('lemma')['count'].count(),
         'nouns': reduced.loc[reduced['NOUN'].notna(), 'NOUN'],
         'verbs': reduced.loc[reduced['VERB'].notna(), 'VERB'],
-        'unknown': df_unknown.groupby('lemma')['count'].count()
+        'unknown': df_unknown.groupby('word')['count'].count()
     }
 
     # Fix the data sets
@@ -128,7 +128,10 @@ def findImportantSentences(doc, keyWords, minimum_occ):
     return important
 
 
-def markupSentencesCli(sents, nouns, verbs, options):
+def markupSentencesCli(sents, nouns, verbs, unknowns, options):
+    def textUnk(s):
+        return u'\u001b[4m{}\u001b[0m'.format(s)
+
     def textNoun(s):
         return u'\u001b[32m{}\u001b[0m'.format(s)
 
@@ -142,7 +145,9 @@ def markupSentencesCli(sents, nouns, verbs, options):
     for i, sent in sents:
         s = ''
         for tok in sent:
-            if tok.lemma_.lower() in nouns:
+            if tok.text in unknowns:
+                s += textUnk(tok.text) + tok.whitespace_
+            elif tok.lemma_.lower() in nouns:
                 s += textNoun(tok.text_with_ws)
             elif tok.lemma_.lower() in verbs:
                 s += textVerb(tok.text_with_ws)
@@ -202,14 +207,14 @@ def main():
         scoreTfidf(bags[subset], coca[subset], coca['total_docs'])
 
     print('Extracting the key words')
-    # unknowns = extractTopWords(bags['unknown'], 'lemma', 'count', options.top)
+    unknowns = extractTopWords(bags['unknown'], 'word', 'count', 4000)
     nouns = extractTopWords(bags['nouns'], 'lemma', 'score', options.top)
     verbs = extractTopWords(bags['verbs'], 'lemma', 'score', options.top)
     keyWords = {**nouns , **verbs}
 
     print('\nKey words in context')
     sents = findImportantSentences(doc, keyWords, options.min_occ)
-    markupSentencesCli(sents, nouns, verbs, options)
+    markupSentencesCli(sents, nouns, verbs, unknowns, options)
 
     print('\nStats')
     total_sents = len(list(doc.sents))
