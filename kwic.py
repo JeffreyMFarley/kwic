@@ -130,6 +130,45 @@ def findImportantSentences(doc, nouns, verbs, minimum_occ):
     return important
 
 
+def findClusters(sents, keyWords):
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    # Translate the keywords array into O(1) lookup for position
+    idx = {x: i for i, x in enumerate(keyWords)}
+
+    # build adjacency matrix
+    adjM = np.eye(len(keyWords), dtype=int)
+    for _, _, scan in sents:
+        queue = list(scan)
+        while queue != []:
+            a = queue.pop(0)
+            ia = idx[a]
+            for b in queue:
+                ib = idx[b]
+                adjM[ia, ib] += 1
+                adjM[ib, ia] += 1
+
+    # Turn the adjacency matrix into a graph
+    graph = csr_matrix(adjM)
+
+    # Reduce to connected components
+    n_components, labels = connected_components(
+        csgraph=graph, directed=False, return_labels=True
+    )
+
+    # Process into a useable format
+    groups = []
+    for i in range(n_components):
+        groups.append([
+            keyWords[j].split('@')[0]
+            for j, g in enumerate(labels)
+            if i == g
+        ])
+
+    return groups
+
+
 def markupSentencesCli(sents, nouns, verbs, unknowns, options):
     def textUnk(s):
         return u'\u001b[4m{}\u001b[0m'.format(s)
@@ -217,9 +256,9 @@ def main():
     print('\nKey words in context')
     sents = findImportantSentences(doc, nouns, verbs, options.min_occ)
 
-    # keyWords = [x + '@n' for x in nouns]
-    # keyWords.extend([x + '@v' for x in verbs])
-    # findClusters(sents, keyWords)
+    keyWords = [x + '@n' for x in nouns]
+    keyWords.extend([x + '@v' for x in verbs])
+    groups = findClusters(sents, keyWords)
 
     markupSentencesCli(sents, nouns, verbs, unknowns, options)
 
