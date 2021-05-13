@@ -113,17 +113,19 @@ def scoreTfidf(df, corpus, total_docs):
 # -----------------------------------------------------------------------------
 # Sentence processing
 
-def findImportantSentences(doc, keyWords, minimum_occ):
+def findImportantSentences(doc, nouns, verbs, minimum_occ):
     important = []
     for i, sent in enumerate(doc.sents):
-        scan = set([
-            tok.lemma_.lower()
-            for tok in sent
-            if tok.lemma_.lower() in keyWords
-        ])
+        scan = set()
+        for tok in sent:
+            ntok = tok.lemma_.lower()
+            if tok.pos_ == 'NOUN' and ntok in nouns:
+                scan.add(ntok + '@n')
+            elif tok.pos_ == 'VERB' and ntok in verbs:
+                scan.add(ntok + '@v')
 
         if len(scan) >= minimum_occ:
-            important.append((i, sent))
+            important.append((i, sent, scan))
 
     return important
 
@@ -142,7 +144,7 @@ def markupSentencesCli(sents, nouns, verbs, unknowns, options):
     if options.handle_newline == 'space':
         newline = ' '
 
-    for i, sent in sents:
+    for i, sent, _ in sents:
         s = ''
         for tok in sent:
             if tok.text in unknowns:
@@ -211,10 +213,14 @@ def main():
     unknowns = extractTopWords(bags['unknown'], 'word', 'count', 4000)
     nouns = extractTopWords(bags['nouns'], 'lemma', 'score', options.top)
     verbs = extractTopWords(bags['verbs'], 'lemma', 'score', options.top)
-    keyWords = {**nouns , **verbs}
 
     print('\nKey words in context')
-    sents = findImportantSentences(doc, keyWords, options.min_occ)
+    sents = findImportantSentences(doc, nouns, verbs, options.min_occ)
+
+    # keyWords = [x + '@n' for x in nouns]
+    # keyWords.extend([x + '@v' for x in verbs])
+    # findClusters(sents, keyWords)
+
     markupSentencesCli(sents, nouns, verbs, unknowns, options)
 
     print('\nStats')
