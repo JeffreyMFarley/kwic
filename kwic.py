@@ -50,14 +50,14 @@ def removeStopwords(doc, ignores):
 # Dataframe builders
 
 
-def bagsOfWords(doc, known, ignores):
+def bagsOfWords(doc, known, options):
     def fix_word_class(x):
         return 'NOUN' if x == 'PROPN' else x
 
     # Load the SpaCy doc as a data frame (1 token per row)
     attrs = [
         [T.text, T.lemma_, T.pos_, 1]
-        for T in removeStopwords(doc, ignores)
+        for T in removeStopwords(doc, options.ignores)
     ]
     df = pd.DataFrame(attrs, columns=['word', 'lemma', 'pos', 'count'])
 
@@ -184,6 +184,7 @@ def main():
     # Get the arguments from the command line
     p = build_arg_parser()
     options = p.parse_args()
+    setattr(options, 'ignores', IGNORES)
 
     print('Reading Corpus of Contemporary American English...')
     with io.open('corpus.json','r', encoding='utf-8') as f:
@@ -200,7 +201,7 @@ def main():
     doc = nlp(raw)
 
     print('Partioning NLP results...')
-    bags = bagsOfWords(doc, coca['all_lemmas'], IGNORES)
+    bags = bagsOfWords(doc, coca['all_lemmas'], options)
 
     print('Scoring the document...')
     for subset in ['all_lemmas', 'nouns', 'verbs']:
