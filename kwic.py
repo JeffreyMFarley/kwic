@@ -242,7 +242,7 @@ def outputStats(doc, sents, nouns, verbs, propers, options):
         vk, vv = safeNext(iverb)
 
         print(fmt_row.format(
-            i,
+            i + 1,
             pk, pv,
             nk, nv,
             vk, vv
