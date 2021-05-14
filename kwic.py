@@ -50,21 +50,12 @@ def removeStopwords(doc, ignores):
 
 
 def bagsOfWords(doc, known, options):
-    def fix_word_class(x):
-        return 'NOUN' if x == 'PROPN' else x
-
     # Load the SpaCy doc as a data frame (1 token per row)
     attrs = [
         [T.text, T.lemma_, T.pos_, 1]
         for T in removeStopwords(doc, options.ignores)
     ]
     df = pd.DataFrame(attrs, columns=['word', 'lemma', 'pos', 'count'])
-
-    # Make sure the lemma column is lowercase (spaCy) makes proper nouns Uppercase
-    df["lemma"] = df["lemma"].str.lower()
-
-    # Rename PROPN to NOUN
-    df['pos'] = df['pos'].apply(fix_word_class)
 
     # Identify the words not in the known vocabulary
     df['known'] = df['lemma'].apply(lambda x: x in known)
@@ -76,9 +67,13 @@ def bagsOfWords(doc, known, options):
     # Create a pivot of lemma x part of speech
     reduced = df_known.groupby(['pos', 'lemma'])['count'].count().unstack(0)
 
+    # Proper nouns may or may not be in the corpus
+    propers = df.groupby(['pos', 'word'])['count'].count().unstack(0)
+
     # Make the panel
     bags = {
         'all_lemmas': df_known.groupby('lemma')['count'].count(),
+        'propers': propers.loc[propers['PROPN'].notna(), 'PROPN'],
         'nouns': reduced.loc[reduced['NOUN'].notna(), 'NOUN'],
         'verbs': reduced.loc[reduced['VERB'].notna(), 'VERB'],
         'unknown': df_unknown.groupby('word')['count'].count()
@@ -90,6 +85,19 @@ def bagsOfWords(doc, known, options):
     #    3. Instead of "lemma' as the index/label, replace it with a ranged index
     for k, v in bags.items():
         bags[k] = v.rename('count').to_frame().reset_index()
+
+    # Remove the proper nouns from unknown
+    dups = bags['unknown'].merge(
+        bags['propers'],
+        on='word',
+        how='left',
+        indicator=True,
+        suffixes=(None, '_y')
+    )
+
+    bags['unknown'] = dups[dups['_merge'] == 'left_only'].drop(
+        columns=['_merge', 'count_y']
+    )
 
     return bags
 
@@ -112,18 +120,20 @@ def scoreTfidf(df, corpus, total_docs):
 # -----------------------------------------------------------------------------
 # Sentence processing
 
-def findImportantSentences(doc, nouns, verbs, minimum_occ):
+def findImportantSentences(doc, nouns, verbs, propers, options):
     important = []
     for i, sent in enumerate(doc.sents):
         scan = set()
         for tok in sent:
             ntok = tok.lemma_.lower()
-            if tok.pos_ == 'NOUN' and ntok in nouns:
+            if tok.text in propers:
+                scan.add(tok.text + '@x')
+            elif tok.pos_ == 'NOUN' and ntok in nouns:
                 scan.add(ntok + '@n')
             elif tok.pos_ == 'VERB' and ntok in verbs:
                 scan.add(ntok + '@v')
 
-        if len(scan) >= minimum_occ:
+        if len(scan) >= options.min_occ:
             important.append((i, sent, scan))
 
     return important
@@ -168,8 +178,8 @@ def findClusters(sents, keyWords):
     return groups
 
 
-def markupSentencesCli(sents, nouns, verbs, unknowns, options):
-    def textUnk(s):
+def markupSentencesCli(sents, nouns, verbs, propers, options):
+    def textPropers(s):
         return u'\u001b[4m{}\u001b[0m'.format(s)
 
     def textNoun(s):
@@ -185,8 +195,8 @@ def markupSentencesCli(sents, nouns, verbs, unknowns, options):
     for i, sent, _ in sents:
         s = ''
         for tok in sent:
-            if tok.text in unknowns:
-                s += textUnk(tok.text) + tok.whitespace_
+            if tok.text in propers:
+                s += textPropers(tok.text) + tok.whitespace_
             elif tok.pos_ == 'NOUN' and tok.lemma_.lower() in nouns:
                 s += textNoun(tok.text_with_ws)
             elif tok.pos_ == 'VERB' and tok.lemma_.lower() in verbs:
@@ -244,22 +254,25 @@ def main():
     bags = bagsOfWords(doc, coca['all_lemmas'], options)
 
     print('Scoring the document...')
-    for subset in ['all_lemmas', 'nouns', 'verbs']:
+    for subset in ['nouns', 'verbs']:
         scoreTfidf(bags[subset], coca[subset], coca['total_docs'])
 
     print('Extracting the key words')
     unknowns = extractTopWords(bags['unknown'], 'word', 'count', 4000)
     nouns = extractTopWords(bags['nouns'], 'lemma', 'score', options.top)
     verbs = extractTopWords(bags['verbs'], 'lemma', 'score', options.top)
+    propers = extractTopWords(bags['propers'], 'word', 'count', options.top)
 
     print('\nKey words in context')
-    sents = findImportantSentences(doc, nouns, verbs, options.min_occ)
+    sents = findImportantSentences(doc, nouns, verbs, propers, options)
 
-    keyWords = [x + '@n' for x in nouns]
-    keyWords.extend([x + '@v' for x in verbs])
-    groups = findClusters(sents, keyWords)
+    # keyWords = [x + '@n' for x in nouns]
+    # keyWords.extend([x + '@v' for x in verbs])
+    # keyWords.extend([x + '@x' for x in propers])
+    # groups = findClusters(sents, keyWords)
+    # print(groups)
 
-    markupSentencesCli(sents, nouns, verbs, unknowns, options)
+    markupSentencesCli(sents, nouns, verbs, propers, options)
 
     print('\nStats')
     total_sents = len(list(doc.sents))
