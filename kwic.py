@@ -1,8 +1,7 @@
 import io
 import json
 import math
-import os.path
-from collections import Counter, OrderedDict
+from collections import OrderedDict
 
 import configargparse
 import numpy as np
