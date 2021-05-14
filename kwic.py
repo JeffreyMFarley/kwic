@@ -209,6 +209,46 @@ def markupSentencesCli(sents, nouns, verbs, propers, options):
         print(f'[{i}] {s}')
 
 # -----------------------------------------------------------------------------
+# Display
+
+def outputStats(doc, sents, nouns, verbs, propers, options):
+    print('\nStats')
+    total_sents = len(list(doc.sents))
+    print(f'\t{total_sents} sentences')
+    print(f'\t{len(sents)} important')
+
+    def safeNext(iterator):
+        try:
+            k, f = next(iterator)
+        except StopIteration:
+            k = ''
+            f = 0.0
+        return k, f
+
+    # iterators
+    inoun = iter(nouns.items())
+    iverb = iter(verbs.items())
+    iproper = iter(propers.items())
+
+    fmt_head = '    {:^23}   {:^23}   {:^23}'
+    fmt_row = '{:>2d}: {:<19} {:>3.0f}   {:<19} {:>3.0f}   {:<19} {:>3.0f}'
+
+    print('\n')
+    print(fmt_head.format('Proper Nouns/Acronyms', 'Nouns', 'Verbs'))
+    print(fmt_head.format('=' * 23, '=' * 23, '=' * 23))
+    for i in range(options.top):
+        pk, pv = safeNext(iproper)
+        nk, nv = safeNext(inoun)
+        vk, vv = safeNext(iverb)
+
+        print(fmt_row.format(
+            i,
+            pk, pv,
+            nk, nv,
+            vk, vv
+        ))
+
+# -----------------------------------------------------------------------------
 # Main
 
 def build_arg_parser():
@@ -273,11 +313,7 @@ def main():
     # print(groups)
 
     markupSentencesCli(sents, nouns, verbs, propers, options)
-
-    print('\nStats')
-    total_sents = len(list(doc.sents))
-    print(f'\t{total_sents} sentences')
-    print(f'\t{len(sents)} important')
+    outputStats(doc, sents, nouns, verbs, propers, options)
 
 
 if __name__ == '__main__':
