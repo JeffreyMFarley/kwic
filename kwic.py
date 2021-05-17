@@ -1,6 +1,7 @@
 import io
 import json
 import math
+import os.path
 from collections import OrderedDict
 
 import configargparse
@@ -277,7 +278,9 @@ def main():
     setattr(options, 'ignores', IGNORES)
 
     print('Reading Corpus of Contemporary American English...')
-    with io.open('corpus.json','r', encoding='utf-8') as f:
+    thisDir = os.path.dirname(__file__)
+    corpus_file = os.path.join(thisDir, 'corpus.json')
+    with io.open(corpus_file,'r', encoding='utf-8') as f:
         coca = json.load(f)
 
     # Open a text file
