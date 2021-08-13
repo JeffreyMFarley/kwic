@@ -224,7 +224,7 @@ def outputStats(doc, sents, nouns, verbs, propers, options):
         except StopIteration:
             k = ''
             f = 0.0
-        return k, f
+        return k[:18], f
 
     # iterators
     inoun = iter(nouns.items())
@@ -232,7 +232,7 @@ def outputStats(doc, sents, nouns, verbs, propers, options):
     iproper = iter(propers.items())
 
     fmt_head = '    {:^23}   {:^23}   {:^23}'
-    fmt_row = '{:>2d}: {:<19} {:>3.0f}   {:<19} {:>3.0f}   {:<19} {:>3.0f}'
+    fmt_row = '{:>3d}: {:<18} {:>4.0f}   {:<18} {:>4.0f}   {:<18} {:>4.0f}'
 
     print('\n')
     print(fmt_head.format('Proper Nouns/Acronyms', 'Nouns', 'Verbs'))
