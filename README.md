@@ -8,6 +8,7 @@ git clone https://github.com/JeffreyMFarley/kwic.git
 cd kwic
 <set up your virtual python environment>
 pip install -r requirements.txt
+python -m spacy download en_core_web_sm
 ```
 
 ## Pre-requistes
