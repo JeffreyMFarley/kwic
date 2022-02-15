@@ -10,11 +10,7 @@ import pandas as pd
 import spacy
 
 
-IGNORES = [
-  'a.','b.','c.','d.','e.','f.','g.','h.','i.','j.','k.','l.','m.','n.','o.',
-  'p.','q.','r.','s.','t.','u.','v.','w.','x.','y.','z.','aa.','bb.','cc.',
-  'dd.','ee.', 'ff.',
-]
+IGNORES = []
 
 # -----------------------------------------------------------------------------
 # simple functions
@@ -23,6 +19,7 @@ IGNORES = [
 def buildPipeline():
     # Load a previous trained-model
     nlp = spacy.load('en_core_web_sm')
+    nlp.max_length = 3000000
     return nlp
 
 
@@ -231,23 +228,53 @@ def outputStats(doc, sents, nouns, verbs, propers, options):
     iverb = iter(verbs.items())
     iproper = iter(propers.items())
 
-    fmt_head = '    {:^23}   {:^23}   {:^23}'
-    fmt_row = '{:>3d}: {:<18} {:>4.0f}   {:<18} {:>4.0f}   {:<18} {:>4.0f}'
+    if options.stats == 'columns':
+        fmt_head = '    {:^23}   {:^23}   {:^23}'
+        fmt_row = '{:>3d}: {:<18} {:>4.0f}   {:<18} {:>4.0f}   {:<18} {:>4.0f}'
 
-    print('\n')
-    print(fmt_head.format('Proper Nouns/Acronyms', 'Nouns', 'Verbs'))
-    print(fmt_head.format('=' * 23, '=' * 23, '=' * 23))
-    for i in range(options.top):
-        pk, pv = safeNext(iproper)
-        nk, nv = safeNext(inoun)
-        vk, vv = safeNext(iverb)
+        print('\n')
+        print(fmt_head.format('Proper Nouns/Acronyms', 'Nouns', 'Verbs'))
+        print(fmt_head.format('=' * 23, '=' * 23, '=' * 23))
+        for i in range(options.top):
+            pk, pv = safeNext(iproper)
+            nk, nv = safeNext(inoun)
+            vk, vv = safeNext(iverb)
 
-        print(fmt_row.format(
-            i + 1,
-            pk, pv,
-            nk, nv,
-            vk, vv
-        ))
+            print(fmt_row.format(
+                i + 1,
+                pk, pv,
+                nk, nv,
+                vk, vv
+            ))
+    else:
+        fmt_row = '{:>3d}: {:<25} {:>4.0f}'
+
+        print('\n')
+        print('Proper Nouns/Acronyms')
+        for i in range(options.top):
+            k, v = safeNext(iproper)
+            print(fmt_row.format(
+                i + 1,
+                k, v
+            ))
+
+        print('\n')
+        print('Nouns')
+        for i in range(options.top):
+            k, v = safeNext(inoun)
+            print(fmt_row.format(
+                i + 1,
+                k, v
+            ))
+
+        print('\n')
+        print('Verbs')
+        for i in range(options.top):
+            k, v = safeNext(iverb)
+            print(fmt_row.format(
+                i + 1,
+                k, v
+            ))
 
 # -----------------------------------------------------------------------------
 # Main
@@ -264,7 +291,12 @@ def build_arg_parser():
     g.add('--handle-newline', default='ignore',
           choices=['keep', 'ignore', 'space'],
           help='decide how newlines should be handled')
+    g.add('--stats', default='columns',
+          choices=['columns', 'stack'],
+          help='specify how the output will be displayed')
     g = p.add_argument_group('I/O')
+    g.add('--corpus', default=None,
+          help='The corpus to use')
     g.add('document',
           help='the file to analyze')
 
@@ -277,10 +309,11 @@ def main():
     options = p.parse_args()
     setattr(options, 'ignores', IGNORES)
 
-    print('Reading Corpus of Contemporary American English...')
-    thisDir = os.path.dirname(__file__)
-    corpus_file = os.path.join(thisDir, 'corpus.json')
-    with io.open(corpus_file,'r', encoding='utf-8') as f:
+    print('Reading Corpus...')
+    if options.corpus is None:
+        thisDir = os.path.dirname(__file__)
+        options.corpus = os.path.join(thisDir, 'corpus.json')
+    with io.open(options.corpus,'r', encoding='utf-8') as f:
         coca = json.load(f)
 
     # Open a text file
