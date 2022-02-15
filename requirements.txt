@@ -1,3 +1,4 @@
 configargparse
 pandas
 spacy
+pdfplumber
